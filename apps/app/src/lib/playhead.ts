@@ -174,7 +174,8 @@ export function prepareGroupPlayData(group: Group): GroupPreparedPlayData | null
 					}
 					{
 						let nextStartTime: number = action.time
-						for (const part of partsToPlay) {
+						for (let i = 0; i < partsToPlay.length; i++) {
+							const part = partsToPlay[i]
 							if (part.loop) {
 								endLoopingPart = part
 								break
@@ -188,7 +189,14 @@ export function prepareGroupPlayData(group: Group): GroupPreparedPlayData | null
 							}
 							section.parts.push(playPart)
 
-							if (playPart.duration === null) {
+							if (playPart.duration === null || i == partsToPlay.length - 1) {
+								//playPart.duration = null
+								playPart.part.timeline[0].obj.enable = {
+									start: 0,
+									duration: null
+								}
+								playPart.part.resolved.duration = null
+								console.log(playPart.part)
 								// Infinite
 								break
 							} else {
@@ -441,7 +449,9 @@ function saveSection(sections: GroupPreparedPlayDataSection[], section: GroupPre
 	if (section.pauseTime !== undefined || section.repeating) {
 		section.endTime = null
 	} else if (section.duration !== null) {
-		section.endTime = section.startTime + section.duration
+		//section.endTime = section.startTime + section.duration
+		section.endTime = null
+		section.duration = null
 	}
 
 	if (section.stopTime && (!section.endTime || section.endTime > section.stopTime)) {
@@ -468,7 +478,10 @@ function saveSection(sections: GroupPreparedPlayDataSection[], section: GroupPre
 			}
 		}
 	}
-
+	//console.log("SECTION")
+	//console.log(section)
+	//console.log("PART0")
+	//console.log(section.parts[0].part)
 	sections.push(section)
 }
 
