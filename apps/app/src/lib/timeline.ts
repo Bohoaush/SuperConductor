@@ -17,6 +17,8 @@ type CustomPartContent = (
 	isPaused: boolean
 ) => TimelineObject[]
 
+const pauseLastFrame = true
+
 export function getTimelineForGroup(
 	group: GroupBase,
 	prepared: GroupPreparedPlayData | null,
@@ -46,7 +48,11 @@ export function getTimelineForGroup(
 			for (let i = 0; i < prepared.sections.length; i++) {
 				const section = prepared.sections[i]
 				firstStart = Math.min(section.startTime, firstStart)
-				lastEnd = Math.max(section.endTime || Infinity, lastEnd)
+				if (section.stopTime !== undefined || !pauseLastFrame) {
+					lastEnd = Math.max(section.endTime || Infinity, lastEnd)
+				} else {
+					lastEnd = Infinity
+				}
 
 				children.push(
 					...sectionToTimelineObj(
@@ -165,7 +171,8 @@ function sectionToTimelineObj(
 		id: `section_${id}`,
 		enable: {
 			start: section.startTime,
-			end: section.endTime ?? undefined,
+			//end: section.endTime ?? undefined,
+			end: undefined,
 		},
 		layer: layer,
 		content: {
@@ -180,11 +187,12 @@ function sectionToTimelineObj(
 		id: `section_content_${id}`,
 		enable: {
 			start: 0,
-			duration: section.repeating
+			/*duration: section.repeating
 				? section.duration
 				: section.endTime !== null
 				? section.endTime - section.startTime
-				: null,
+				: null,*/
+			duration: undefined,
 			repeating: section.repeating ? section.duration : undefined,
 		},
 		layer: `${layer}_content`,
@@ -206,7 +214,8 @@ function sectionToTimelineObj(
 			part,
 			part.startTime - section.startTime,
 			section.pauseTime,
-			customPartContent
+			section.stopTime,
+			customPartContent,
 		)
 		// We have to modify the ids so that they won't collide with the previous ones:
 		changeTimelineId(obj, (id) => getUniqueId(id))
@@ -219,12 +228,14 @@ function sectionToTimelineObj(
 
 	return timeline
 }
+
 function partToTimelineObj(
 	objId: string,
 	group: GroupBase,
 	playingPart: GroupPreparedPlayDataPart,
 	startTime: number,
 	pauseTime: number | undefined,
+	stopTime: number | undefined,
 	customPartContent: CustomPartContent | undefined
 ): TimelineObjEmpty {
 	const part: Part = playingPart.part
@@ -319,7 +330,11 @@ function updateTimelineEnable(changedIds: Map<string, string>, obj: TimelineObje
 	for (const enable of ensureArray(obj.enable)) {
 		enable.start = updateTimelineExpression(changedIds, enable.start)
 		enable.end = updateTimelineExpression(changedIds, enable.end)
-		enable.duration = updateTimelineExpression(changedIds, enable.duration)
+		if (!pauseLastFrame) {
+			enable.duration = updateTimelineExpression(changedIds, enable.duration)
+		} else {
+			enable.duration = Infinity
+		}
 		enable.repeating = updateTimelineExpression(changedIds, enable.repeating)
 		enable.while = updateTimelineExpression(changedIds, enable.while)
 	}
