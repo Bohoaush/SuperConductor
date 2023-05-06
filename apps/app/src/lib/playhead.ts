@@ -16,6 +16,8 @@ import _ from 'lodash'
 const prepareValidDuration = 365 * 24 * 3600 * 1000
 const prepareValidMaxCount = 100
 
+const pauseLastFrame = true
+
 type PlayAction = {
 	time: number
 	partId: string
@@ -466,6 +468,7 @@ function saveSection(sections: GroupPreparedPlayDataSection[], section: GroupPre
 			} else if (prevSection.endTime) {
 				lastPart.endAction = PlayPartEndAction.STOP
 			}
+			section.endTime = null
 		}
 	}
 
@@ -491,6 +494,11 @@ export function getGroupPlayData(prepared: GroupPreparedPlayData | null, now = D
 
 			for (const section of prepared.sections) {
 				playhead = getPlayheadForSection(playData, now, section) || playhead
+				//console.log(section.endTime)
+				//console.log(playData)
+				//console.log(now)
+				//console.log(section)
+				//console.log(playhead)
 			}
 
 			if (playhead) {
@@ -589,6 +597,8 @@ function getPlayheadForSection(
 
 		const playheadTime = section.pauseTime !== undefined ? section.pauseTime : now - partStartTime
 
+		const partStopTime = section.stopTime
+
 		if (section.pauseTime === undefined) {
 			if (partStartTime >= section.startTime && partStartTime < (section.endTime ?? Infinity)) {
 				addCountdown(playData, part.part, partStartTime - now)
@@ -603,7 +613,7 @@ function getPlayheadForSection(
 			}
 		}
 
-		if (playheadTime >= 0 && playheadTime < (part.duration || Infinity) && sectionEndTime > now) {
+		if (playheadTime >= 0 && ((playheadTime < (part.duration || Infinity) && sectionEndTime > now) || (pauseLastFrame && !partStopTime))) {
 			playhead = literal<GroupPlayDataPlayhead>({
 				playheadTime: playheadTime,
 				partStartTime: partStartTime,
